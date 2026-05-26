@@ -19,7 +19,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@/mastra/*": ["./src/mastra/*"],
+      "@/components/*": ["./components/*"],
     }
   },
   "include": [
