@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
 export const envVarsSchema = z.object({
-  NVIDIA_API_KEY: z.string().describe('API key for NVIDIA services'),
   APPEEKY_API_KEY: z.string().describe('API key for Appeeky services')
 });
 
@@ -16,4 +15,4 @@ function getEnvVars() {
 }
 
 // typed and validated environment variables
-export const { APPEEKY_API_KEY, NVIDIA_API_KEY } = getEnvVars();
+export const { APPEEKY_API_KEY } = getEnvVars();

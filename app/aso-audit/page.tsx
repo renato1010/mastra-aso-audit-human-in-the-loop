@@ -88,7 +88,6 @@ const WorkflowAsoAudit = () => {
           };
         }
         // Starting a new run: send inputData
-        console.log('will send inputData with url:', metadata.url);
         return {
           body: {
             inputData: {

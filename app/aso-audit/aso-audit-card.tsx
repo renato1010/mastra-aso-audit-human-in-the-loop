@@ -81,7 +81,6 @@ function ScoreItem({
 }
 
 export function AsoAuditCard({ data }: { data: AsoAuditData }) {
-  console.log({ 'data-app:': data.app });
   const formattedDate = new Date(data.app.lastUpdated).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',

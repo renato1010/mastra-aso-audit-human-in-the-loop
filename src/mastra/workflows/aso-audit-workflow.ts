@@ -1,9 +1,9 @@
 import { createWorkflow, createStep } from '@mastra/core/workflows';
 import { z } from 'zod';
 import { asoAuditMetadataSchema, stateMetadataSchema } from '@/mastra/schemas';
-import { mockFetchAsoMetadata } from '@/mastra/tools/fetch-app-metadata-tool';
+import { fetchAsoMetadata } from '@/mastra/tools/fetch-app-metadata-tool';
 
-// Step 1: Fetch metadata and suspend for confirmation
+// Step 1: fetch metadata, suspend for user approval, resume on confirmation
 const fetchMetadata = createStep({
   id: 'fetch-metadata',
   description: 'Fetch app metadata from the provided URL and ask user for confirmation',
@@ -24,41 +24,36 @@ const fetchMetadata = createStep({
     metadata: asoAuditMetadataSchema
   }),
   execute: async ({ inputData, resumeData, state, setState, suspend, bail }) => {
-    // If resuming after user responded
     if (resumeData?.approved === false) {
       return bail({ message: 'User did not confirm the app listing.' });
     }
-    // if have resumeData and it's approved, we can proceed to save the whole metadata in the workflow state for the next step to run the audit
     if (resumeData?.approved === true) {
-      // User has confirmed
-      // do we have workflow state metadata from the initial fetch?
       if (!state.metadata) {
         return bail({ message: 'Metadata not available after confirmation.' });
       }
 
       return { approved: true, metadata: state.metadata };
     }
-    // First execution — fetch metadata and suspend for confirmation
-    const metadata = await mockFetchAsoMetadata(inputData);
-    if (!metadata) {
+    // Initial run: fetch metadata, persist to state, then suspend
+    const asoAuditData = await fetchAsoMetadata(inputData);
+    if (!asoAuditData) {
       return bail({ message: 'Failed to fetch app metadata.' });
     }
-    await setState({ metadata });
+    await setState({ metadata: asoAuditData });
     return await suspend({
       message: `Is this the app you meant?\n
-      **${metadata.app.title}** by ${metadata.app.developer}\n
-      Category: ${metadata.app.category} | Country: ${metadata.country}`
+      **${asoAuditData.app.title}** by ${asoAuditData.app.developer}\n
+      Category: ${asoAuditData.app.category} | Country: ${asoAuditData.country}`
     });
   }
 });
 
-// Step 2: Return the full ASO audit
+// Step 2: validate approval and emit the audit payload
 const runAudit = createStep({
   id: 'run-audit',
   inputSchema: z.object({ approved: z.boolean(), metadata: asoAuditMetadataSchema }),
   outputSchema: z.object({ payload: asoAuditMetadataSchema }),
   execute: async ({ inputData }) => {
-    // check if user confirmed the surface metadata
     const isConfirmed = inputData.approved;
     const haveMetadata = inputData.metadata !== null;
     if (!isConfirmed || !haveMetadata) {
@@ -68,7 +63,6 @@ const runAudit = createStep({
   }
 });
 
-// Workflow definition
 export const asoAuditWorkflow = createWorkflow({
   id: 'aso-audit-workflow',
   inputSchema: z.object({

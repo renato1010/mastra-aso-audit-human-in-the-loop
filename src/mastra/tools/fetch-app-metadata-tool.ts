@@ -2,7 +2,6 @@ import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { AsoAuditMetadata, asoAuditMetadataSchema } from '@/mastra/schemas';
 import { APPEEKY_API_BASE_URL } from '@/lib/constants';
-import type { AsoAudit } from '@/mastra/types/aso-audit';
 import { APPEEKY_API_KEY } from '@/mastra/env-vars';
 
 type JsonBody = Record<string, unknown> | unknown[];
@@ -20,7 +19,6 @@ export async function fetchGenericRes<TResponse>(
   let body: BodyInit | null = null;
 
   if (rawBody != null) {
-    // If caller already supplied a BodyInit, pass it through untouched.
     const isAlreadyBodyInit =
       (typeof FormData !== 'undefined' && rawBody instanceof FormData) ||
       rawBody instanceof URLSearchParams ||
@@ -33,7 +31,6 @@ export async function fetchGenericRes<TResponse>(
       body = rawBody as BodyInit;
       // Never set Content-Type for FormData; browser must do it.
     } else {
-      // plain JS object/array -> JSON
       body = JSON.stringify(rawBody);
       if (!headers.has('Content-Type')) {
         headers.set('Content-Type', 'application/json');
@@ -55,33 +52,34 @@ export async function fetchGenericRes<TResponse>(
   }
 }
 const idRegex = /\/id(\d+)$/;
-// export the core logic separately:
 export async function fetchAsoMetadata(input: {
   url: string;
 }): Promise<AsoAuditMetadata | undefined> {
   const matchedId = input.url.match(idRegex)?.[1];
-  console.log('Extracted app ID from URL:', matchedId);
   if (!matchedId) return undefined;
   const appeekyAsoAuditUrl = `${APPEEKY_API_BASE_URL}/v1/aso/audit/${matchedId}?country=us`;
 
   try {
-    const asoAuditResponse = await fetchGenericRes<AsoAudit['data']>(appeekyAsoAuditUrl, {
-      headers: {
-        'X-API-Key': APPEEKY_API_KEY,
-        'Content-Type': 'application/json'
-      },
-      method: 'GET'
-    });
-    // return full ASO audit data for now
-    return asoAuditResponse;
+    const asoAuditResponse = await fetchGenericRes<{ data: NonNullable<AsoAuditMetadata> }>(
+      appeekyAsoAuditUrl,
+      {
+        headers: {
+          'X-API-Key': APPEEKY_API_KEY,
+          'Content-Type': 'application/json'
+        },
+        method: 'GET'
+      }
+    );
+    return asoAuditResponse.data;
   } catch (_error) {
+    console.error('Error fetching ASO audit metadata:', _error);
     return undefined;
   }
 }
 
-// export mock fetchAsoMetadata returns a hardcoded response for testing without hitting the real API
+// Mock variant: returns hardcoded data for testing without hitting the real API.
+// Sample payload sourced from https://docs.appeeky.com/docs/aso-audit#response
 export async function mockFetchAsoMetadata(_input: { url: string }): Promise<AsoAuditMetadata> {
-  // mock promise delay and return an object that matches the AsoAuditMetadata type
   return new Promise((resolve) => {
     setTimeout(() => {
       resolve({
@@ -155,7 +153,7 @@ export async function mockFetchAsoMetadata(_input: { url: string }): Promise<Aso
   });
 }
 
-// Tool
+// Tool kept for reference: the fetch is deterministic, so no agent invocation is needed.
 export const fetchAsoAuditMetadata = createTool({
   id: 'fetch-aso-audit',
   description: 'Fetch ASO audit data for a given app URL',
@@ -168,7 +166,6 @@ export const fetchAsoAuditMetadata = createTool({
     if (!asoAuditResponse) {
       throw new Error('Failed to fetch ASO audit metadata.');
     }
-    // return only surface-level metadata for confirmation step
     return asoAuditResponse;
   }
 });

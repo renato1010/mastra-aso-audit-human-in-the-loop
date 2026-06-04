@@ -12,14 +12,13 @@ import {
   SensitiveDataFilter
 } from '@mastra/observability';
 import { asoAuditWorkflow } from '@/mastra/workflows/aso-audit-workflow';
-import { approvalWorkflow } from '@/mastra/workflows/approval-workflow';
 import { workflowRoute } from '@mastra/ai-sdk';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 export const mastra = new Mastra({
-  workflows: { asoAuditWorkflow, approvalWorkflow },
+  workflows: { asoAuditWorkflow },
   storage: new MastraCompositeStore({
     id: 'composite-storage',
     default: new LibSQLStore({
